@@ -9,12 +9,15 @@ const kAttributeCode = 4;
 const kElementCloseCode = 5;
 const kTextCode = 6;
 const kIdentifyCode = 7;
+const kListenCode = 8;
 
 let index = 0;
 let worker;
 let nextId;
 let messages;
-const patchRoots = new WeakMap();
+const nodesById = new Map();
+const idsByNode = new WeakMap();
+const eventListeners = new Map();
 
 function initWorker(script) {
     worker = new Worker(script);
@@ -36,7 +39,7 @@ function handleMessages(newMessages) {
                 if (id === 0) {
                     patchRoot = document.body;
                 } else {
-                    patchRoot = patchRoots.get(id);
+                    patchRoot = nodesById.get(id);
                 }
                 IncrementalDOM.patch(patchRoot, handlePatch);
                 break;
@@ -71,7 +74,8 @@ function handlePatch() {
                 const name = message.name;
                 const el = IncrementalDOM.elementClose(name);
                 if (nextId != null) {
-                    patchRoots.put(nextId, el);
+                    nodesById.set(nextId, el);
+                    idsByNode.set(el, nextId);
                     nextId = null;
                 }
                 break;
@@ -86,7 +90,22 @@ function handlePatch() {
                 nextId = value;
                 break;
             }
+            case kListenCode: {
+                const name = message.name;
+                const value = message.value;
+                IncrementalDOM.attr(name, createBoundListener(value));
+                break;
+            }
         }
     }
     nextId = null;
+}
+
+function createBoundListener(id) {
+    return function() {
+        worker.postMessage({
+            id: id,
+            data: null,
+        });
+    }
 }

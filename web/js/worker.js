@@ -9,8 +9,22 @@ const kAttributeCode = 4;
 const kElementCloseCode = 5;
 const kTextCode = 6;
 const kIdentifyCode = 7;
+const kListenCode = 8;
 
 let messages = [];
+let eventDispatcher;
+
+onmessage = function(event) {
+    const id = event.data.id;
+    const data = event.data.data;
+    if (eventDispatcher != null) {
+        eventDispatcher(id, data);
+    }
+}
+
+function setEventDispatcher(dispatcher) {
+    eventDispatcher = dispatcher;
+}
 
 function elementOpenStart(name) {
     messages.push({
@@ -28,10 +42,18 @@ function elementOpenEnd(name) {
 
 function attribute(name, value) {
     messages.push({
-        command: kElementOpenEndCode,
+        command: kAttributeCode,
         name: name,
         value: value,
     });
+}
+
+function listen(name, value) {
+    messages.push({
+        command: kListenCode,
+        name: name,
+        value: value,
+    })
 }
 
 function identify(id) {
