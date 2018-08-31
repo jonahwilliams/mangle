@@ -1,9 +1,10 @@
 @JS()
 library client;
 
-import 'dart:html';
+import 'dart:html' show Worker, MessageEvent, window, document;
 
 import 'package:js/js.dart';
+import 'package:mangle/src/events.dart';
 
 import 'shared.dart';
 
@@ -18,6 +19,7 @@ class RenderClient {
   int _index;
   int _frameBudget = 1000;
   final _patchBoundaries = <String, Node>{};
+  final _callbackCache = <String, Function>{};
 
   void _handleMessage(MessageEvent event) {
     _pending = event.data;
@@ -80,7 +82,9 @@ class RenderClient {
         case RenderCommand.eventListenerCommand:
           final String type = _pending[_index + 1];
           final String key = _pending[_index + 2];
-          IncrementalDom.attribute(type, _makeCallback(key));
+          final String cacheKey = '$key$type';
+          _callbackCache[cacheKey] ??= _makeCallback(key, type);
+          IncrementalDom.attribute(type, _callbackCache[cacheKey]);
           break;
         case RenderCommand.patchCommand:
           return;
@@ -88,11 +92,32 @@ class RenderClient {
     }
   }
 
-  Function _makeCallback(String key) {
-    return allowInterop((Event _) {
-      _worker.postMessage(key);
-    });
+  Function _makeCallback(String key, String type) {
+    switch (type) {
+      case Event.input:
+        return allowInterop((InputEvent event) {
+          _worker.postMessage(key);
+        });
+      case Event.keydown:
+        return allowInterop((KeyboardEvent event) {
+          _worker.postMessage(key);
+        });
+      default:
+        return allowInterop((dynamic _) {
+          _worker.postMessage(key);
+        });
+    }
   }
+}
+
+@JS()
+abstract class InputEvent {
+  external String get data;
+}
+
+@JS()
+abstract class KeyboardEvent {
+  external int get key;
 }
 
 @JS('IncrementalDOM')
@@ -116,6 +141,10 @@ abstract class IncrementalDom {
 
   external static Node currentPointer();
 }
+
+@JS()
+abstract class Node {}
+
 
 /// Run the application with a main entrypoint in [scriptFile].
 void runApp(String scriptFile) {

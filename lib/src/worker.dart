@@ -5,12 +5,14 @@ import 'package:js/js.dart';
 
 import 'shared.dart';
 
+final context = new RenderContext._();
+
 /// The rendering context buffers and flushes rendering operations to a
 /// rendering client.
 class RenderContext {
-  RenderContext() {
-    onmessage = allowInterop((dynamic data) {
-      print(data);
+  RenderContext._() {
+    onmessage = allowInterop((MessageEvent data) {
+      print(data.data);
     });
   }
 
@@ -116,6 +118,11 @@ class RenderContext {
     postMessage(_pending);
     _pending = <Object>[];
   }
+}
+
+@JS()
+abstract class MessageEvent {
+  external dynamic get data;
 }
 
 @JS()

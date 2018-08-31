@@ -1,3 +1,4 @@
+import 'package:mangle/src/events.dart';
 import 'package:mangle/src/worker.dart';
 
 void main() {
@@ -5,12 +6,11 @@ void main() {
 }
 
 void largeTable() {
-  final context = new RenderContext();
   context.start(null);
   context.elementOpen('table');
   for (var i = 0; i < words.length; i++) {
     context.elementOpenStart('tr');
-    context.eventListener('onclick', '$i');
+    context.eventListener(Event.mouseover, '$i');
     if (i.isEven) {
       context.attribute('style', 'background-color: white;');
     } else {
