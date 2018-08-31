@@ -5,13 +5,14 @@ import 'package:js/js.dart';
 
 import 'shared.dart';
 
-RenderContext get context => _context;
-RenderContext _context = new RenderContext._();
-
 /// The rendering context buffers and flushes rendering operations to a
 /// rendering client.
 class RenderContext {
-  RenderContext._() {}
+  RenderContext() {
+    onmessage = allowInterop((dynamic data) {
+      print(data);
+    });
+  }
 
   List<Object> _pending = <Object>[];
   bool _debugInElementHead = false;
@@ -112,17 +113,16 @@ class RenderContext {
   void flush() {
     assert(!_debugInPatchOperation);
     assert((_pending.length % 3) == 0); // is divisible by 3.
-    _self.postMessage(_pending);
+    postMessage(_pending);
     _pending = <Object>[];
   }
 }
 
 @JS()
-abstract class WebWorkerGlobalScope {
-  external set onmessage(void Function(dynamic) callback);
+external set onmessage(dynamic callback);
 
-  external void postMessage(Object value);
-}
+@JS()
+external dynamic get onmessage;
 
-@JS('self')
-external WebWorkerGlobalScope get _self;
+@JS()
+external void postMessage(Object value);

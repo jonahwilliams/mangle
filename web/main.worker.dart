@@ -5,6 +5,7 @@ void main() {
 }
 
 void largeTable() {
+  final context = new RenderContext();
   context.start(null);
   context.elementOpen('table');
   for (var i = 0; i < words.length; i++) {
