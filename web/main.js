@@ -1,1 +1,0 @@
-initWorker('main.worker.dart.js');

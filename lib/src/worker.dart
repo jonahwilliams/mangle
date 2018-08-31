@@ -3,26 +3,126 @@ library worker;
 
 import 'package:js/js.dart';
 
-external void importScripts(String script);
+import 'shared.dart';
 
-external void elementOpenStart(String name);
+RenderContext get context => _context;
+RenderContext _context = new RenderContext._();
 
-external void elementOpenEnd(String name);
+/// The rendering context buffers and flushes rendering operations to a
+/// rendering client.
+class RenderContext {
+  RenderContext._() {}
 
-external void elementClose(String name);
+  List<Object> _pending = <Object>[];
+  bool _debugInElementHead = false;
+  bool _debugInPatchOperation = false;
 
-external void attribute(String name, Object value);
+  /// Start rendering an element with tag [name] and set the render context to
+  /// the opening tag.
+  void elementOpenStart(String name) {
+    assert(_debugInPatchOperation);
+    _pending.add(RenderCommand.elementOpenStartCommand);
+    _pending.add(name);
+    _pending.add(null);
+    _debugInElementHead = true;
+  }
 
-external void identify(int id);
+  /// Finish rendering the current element opening tag and set the render context to
+  /// the child list.
+  void elementOpenEnd() {
+    assert(_debugInPatchOperation);
+    _pending.add(RenderCommand.elementOpenEndCommand);
+    _pending.add(null);
+    _pending.add(null);
+    _debugInElementHead = false;
+  }
 
-external void listen(String type, int id);
+  /// Start rendering an element with tag [name] and set the render context to
+  /// the child list.
+  ///
+  /// This method is provided as a shortcut for an [elementOpenStart] and
+  /// [elementOpenEnd] with no calls in between.
+  void elementOpen(String name) {
+    assert(_debugInPatchOperation);
+    _pending.add(RenderCommand.elementOpenCommand);
+    _pending.add(name);
+    _pending.add(null);
+  }
 
-external void text(String value);
+  /// Finish rendering the child list of the last element with tag [name].
+  void elementClose(String name) {
+    assert(_debugInPatchOperation);
+    _pending.add(RenderCommand.elementCloseCommand);
+    _pending.add(name);
+    _pending.add(null);
+  }
 
-external void patchStart(int id);
+  /// Add an an attribute with [name] and [value] to the current element head.
+  ///
+  /// value must be an [int], [double], [String], [bool], or [null].
+  void attribute(String name, Object value) {
+    assert(_debugInPatchOperation);
+    assert(_debugInElementHead);
+    assert(value is int || value is double || value is String || value is bool || value == null);
+    _pending.add(RenderCommand.attributeCommand);
+    _pending.add(name);
+    _pending.add(value);
+  }
 
-external void patchEnd();
+  void eventListener(String type, String key) {
+    assert(_debugInPatchOperation);
+    assert(_debugInElementHead);
+    _pending.add(RenderCommand.eventListenerCommand);
+    _pending.add(type);
+    _pending.add(key);
+  }
 
-external void flushMessages();
+  void text(String value) {
+    assert(_debugInPatchOperation);
+    assert(!_debugInElementHead);
+    _pending.add(RenderCommand.textCommand);
+    _pending.add(value);
+    _pending.add(null);
+  }
 
-external setEventDispatcher(void Function(int id, Object data) cb);
+  /// Start a rendering patch operation.
+  void start(String id) {
+    assert(!_debugInPatchOperation);
+    _debugInPatchOperation = true;
+    _pending.add(RenderCommand.patchCommand);
+    _pending.add(id);
+    _pending.add(null);
+  }
+
+  void boundary(String id) {
+    assert(_debugInPatchOperation);
+    assert(!_debugInElementHead);
+    _pending.add(RenderCommand.patchBoundaryCommand);
+    _pending.add(id);
+    _pending.add(null);
+  }
+
+  /// Finish a rendering patch operation.
+  void end() {
+    assert(_debugInPatchOperation);
+    _debugInPatchOperation = false;
+  }
+
+  /// Flush the rendering buffer to the client.
+  void flush() {
+    assert(!_debugInPatchOperation);
+    assert((_pending.length % 3) == 0); // is divisible by 3.
+    _self.postMessage(_pending);
+    _pending = <Object>[];
+  }
+}
+
+@JS()
+abstract class WebWorkerGlobalScope {
+  external set onmessage(void Function(dynamic) callback);
+
+  external void postMessage(Object value);
+}
+
+@JS('self')
+external WebWorkerGlobalScope get _self;
