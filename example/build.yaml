@@ -1,0 +1,7 @@
+builders:
+  incrementalDomBuilder:
+    import: "package:mangle/builders.dart"
+    builder_factories: ["incrementalDomBuilder"]
+    build_extensions: {".html": [".html.js", ".html.dart"]}
+    build_to: source
+    auto_apply: root_package

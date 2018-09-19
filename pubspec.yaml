@@ -7,6 +7,9 @@ environment:
 
 dependencies:
   js:
+  meta:
+  angular_ast:
+  build:
 
 dev_dependencies:
   build_runner: ^0.10.0
